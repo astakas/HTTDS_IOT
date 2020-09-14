@@ -1,0 +1,65 @@
+// this is last known good running script
+// do not change anything - make a branch!
+
+#include <GravityTDS.h>
+#include <EEPROM.h>
+#include "GravityTDS.h"
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+#include <DHT.h>
+
+// Network Parameters
+char ssid[] = "taka_net";
+char pass[] = "jimbaran17";
+char auth[] = "fouDps_1h9N6hlGIZiXmsbmRmqe2u6jI";
+
+#define TdsSensorPin A0 // TDS sensor pin position
+GravityTDS gravityTds;
+BlynkTimer timer; // if not working, comment this
+
+#define DHTPIN D4
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+float tdsValue = 0; // initiate TDS 
+float h;
+float t;
+
+void MainFunction()
+{ 
+    //temperature = readTemperature();  //add your temperature sensor and read it
+    //gravityTds.setTemperature(sensors,temperature);  // set the temperature and execute temperature compensation
+    gravityTds.update();  //sample and calculate
+    tdsValue = gravityTds.getTdsValue();  // then get the value
+    h = dht.readHumidity();
+    t = dht.readTemperature();
+    if (isnan(h) || isnan(t)) {
+      Serial.println("NO DATA");
+      return;
+    }
+    
+    Serial.print(tdsValue,0);
+
+    // Send the readings to blynk platform
+    Blynk.virtualWrite(V2, tdsValue);
+    Blynk.virtualWrite(V5, h);
+    Blynk.virtualWrite(V6, t);
+}
+
+void setup()
+{
+    Serial.begin(115200);
+    Blynk.begin(auth, ssid, pass);
+    dht.begin();
+    gravityTds.setPin(TdsSensorPin);
+    gravityTds.setAref(5.0);  //reference voltage on ADC, default 5.0V on Arduino UNO
+    gravityTds.setAdcRange(1024);  //1024 for 10bit ADC;4096 for 12bit ADC
+    gravityTds.begin();  //initialization  
+    timer.setInterval(1000L, MainFunction);
+}
+
+void loop()
+{
+    Blynk.run();
+    timer.run(); // if not working, comment this
+}
